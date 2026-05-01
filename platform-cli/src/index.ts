@@ -1,0 +1,84 @@
+/**
+ * `platform` — bootstrap CLI.
+ *
+ * Subcommands:
+ *   platform login                — full bootstrap (browser SSO → token
+ *                                   → keychain → settings → claude
+ *                                   plugin install)
+ *   platform doctor               — diagnostic checklist
+ *   platform refresh              — re-mint the developer git token
+ *   platform new <slug>           — clone the platform scaffold for a
+ *                                   new app
+ *
+ * The user is non-technical (Excel-fluent, not architecture-fluent), so
+ * every error message must be a single sentence followed by a single
+ * actionable next step. No stack traces unless `--debug`.
+ */
+
+import { runLogin } from "./commands/login.js";
+import { runDoctor } from "./commands/doctor.js";
+import { runRefresh } from "./commands/refresh.js";
+import { runNew } from "./commands/new.js";
+
+const VERSION = "0.1.0";
+
+function printHelp(): void {
+  process.stdout.write(
+    [
+      `platform ${VERSION}`,
+      "",
+      "Usage:",
+      "  platform login            Bootstrap this machine for the platform",
+      "  platform doctor           Diagnose problems",
+      "  platform refresh          Re-mint your platform token",
+      "  platform new <slug>       Start a new app",
+      "  platform --version        Print version",
+      "  platform --help           Show this help",
+      "",
+    ].join("\n"),
+  );
+}
+
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const cmd = argv[0];
+
+  if (!cmd || cmd === "--help" || cmd === "-h" || cmd === "help") {
+    printHelp();
+    return 0;
+  }
+  if (cmd === "--version" || cmd === "-v" || cmd === "version") {
+    process.stdout.write(`${VERSION}\n`);
+    return 0;
+  }
+
+  try {
+    switch (cmd) {
+      case "login":
+        return await runLogin(argv.slice(1));
+      case "doctor":
+        return await runDoctor(argv.slice(1));
+      case "refresh":
+        return await runRefresh(argv.slice(1));
+      case "new":
+        return await runNew(argv.slice(1));
+      default:
+        process.stderr.write(`Unknown command: ${cmd}\n\n`);
+        printHelp();
+        return 64;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`✗ ${message}\n`);
+    if (process.env.PLATFORM_CLI_DEBUG) {
+      process.stderr.write(`${err instanceof Error && err.stack ? err.stack : ""}\n`);
+    }
+    return 1;
+  }
+}
+
+// Run when invoked as a CLI; do nothing when imported by tests.
+const isDirectInvocation =
+  typeof process !== "undefined" && process.argv[1] && /platform-cli\/(dist|src)\/index\./.test(process.argv[1]);
+if (isDirectInvocation) {
+  void main().then((code) => process.exit(code));
+}

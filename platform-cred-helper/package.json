@@ -1,0 +1,10 @@
+{
+  "name": "@enterprise/platform-cred-helper",
+  "version": "0.1.0",
+  "description": "Git credential helper that returns the platform DeveloperGitToken from the OS keychain. Implements git's credential-helper protocol.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "platform-cred-helper": "./platform-cred-helper.mjs"
+  }
+}

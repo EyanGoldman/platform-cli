@@ -1,0 +1,74 @@
+name: Release Platform CLI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: platform-cli/pnpm-lock.yaml
+
+      - name: Install platform-cli deps
+        working-directory: platform-cli
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build platform-cli
+        working-directory: platform-cli
+        run: pnpm build
+
+      - name: Pack platform-cli tarball
+        id: pack
+        working-directory: platform-cli
+        run: |
+          pnpm pack --pack-destination "$GITHUB_WORKSPACE"
+          # Normalize to a fixed name so the install script can hardcode the URL.
+          mv "$GITHUB_WORKSPACE"/enterprise-platform-cli-*.tgz \
+             "$GITHUB_WORKSPACE/platform-cli-latest.tgz"
+
+      - name: Pack cred-helper tarball
+        run: |
+          tar -czf "$GITHUB_WORKSPACE/platform-cred-helper.tgz" \
+            -C platform-cred-helper \
+            platform-cred-helper.mjs package.json
+
+      - name: Stage install scripts
+        run: |
+          cp install/install.sh  "$GITHUB_WORKSPACE/install.sh"
+          cp install/install.ps1 "$GITHUB_WORKSPACE/install.ps1"
+
+      - name: Delete previous rolling release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete platform-cli-latest --yes --cleanup-tag || true
+
+      - name: Create rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create platform-cli-latest \
+            --title "Platform CLI (latest)" \
+            --notes "Built from commit ${{ github.sha }}. Each consumer platform's app-store /install.sh redirects clients here." \
+            --target ${{ github.sha }} \
+            "$GITHUB_WORKSPACE/platform-cli-latest.tgz#platform-cli-latest.tgz" \
+            "$GITHUB_WORKSPACE/platform-cred-helper.tgz#platform-cred-helper.tgz" \
+            "$GITHUB_WORKSPACE/install.sh#install.sh" \
+            "$GITHUB_WORKSPACE/install.ps1#install.ps1"
