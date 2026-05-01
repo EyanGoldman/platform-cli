@@ -23,8 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
-          cache-dependency-path: platform-cli/pnpm-lock.yaml
 
       - name: Install platform-cli deps
         working-directory: platform-cli
