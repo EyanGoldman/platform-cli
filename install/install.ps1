@@ -14,13 +14,17 @@ $ErrorActionPreference = "Stop"
 # has __PLATFORM_PROXY_BASE_URL__ replaced with that <host>). Explicit
 # env var still wins — useful for contributors testing against a
 # different environment.
-$ProxyBaseUrl = if ($env:PLATFORM_PROXY_BASE_URL) { $env:PLATFORM_PROXY_BASE_URL } else { "__PLATFORM_PROXY_BASE_URL__" }
-# Build the placeholder sentinel by concatenation so the install route's
-# replaceAll doesn't substitute it here too. Without this the templated
+$ProxyBaseUrl  = if ($env:PLATFORM_PROXY_BASE_URL) { $env:PLATFORM_PROXY_BASE_URL } else { "__PLATFORM_PROXY_BASE_URL__" }
+$AppStoreUrl   = if ($env:APP_STORE_URL)           { $env:APP_STORE_URL }           else { "__APP_STORE_URL__" }
+$ApiGatewayUrl = if ($env:API_GATEWAY_URL)         { $env:API_GATEWAY_URL }         else { "__API_GATEWAY_URL__" }
+# Build the placeholder sentinels by concatenation so the install route's
+# replaceAll doesn't substitute them here too. Without this the templated
 # copy compares the templated default against itself and always exits.
-$Placeholder = "__PLATFORM_" + "PROXY_BASE_URL" + "__"
-if ($ProxyBaseUrl -eq $Placeholder) {
-  Write-Error "This install.ps1 appears to be the raw repo copy (no templated host). Either run it from a deployed platform host (irm https://<host>/install.ps1) or set `$env:PLATFORM_PROXY_BASE_URL before running."
+$ProxyPlaceholder      = "__PLATFORM_" + "PROXY_BASE_URL" + "__"
+$AppStorePlaceholder   = "__APP_" + "STORE_URL" + "__"
+$ApiGatewayPlaceholder = "__API_" + "GATEWAY_URL" + "__"
+if ($ProxyBaseUrl -eq $ProxyPlaceholder -or $AppStoreUrl -eq $AppStorePlaceholder -or $ApiGatewayUrl -eq $ApiGatewayPlaceholder) {
+  Write-Error "This install.ps1 appears to be the raw repo copy (no templated hosts). Either run it from a deployed platform host (irm https://<host>/install.ps1) or set `$env:PLATFORM_PROXY_BASE_URL, `$env:APP_STORE_URL, and `$env:API_GATEWAY_URL before running."
   exit 1
 }
 $PlatformHome = Join-Path $env:USERPROFILE ".platform"
@@ -149,6 +153,8 @@ $proxyHost = ([Uri]$ProxyBaseUrl).Host
 Say ""
 Say "Almost done — sign in via your browser to mint a token."
 $env:PLATFORM_PROXY_BASE_URL = $ProxyBaseUrl
+$env:APP_STORE_URL           = $AppStoreUrl
+$env:API_GATEWAY_URL         = $ApiGatewayUrl
 $env:Path = "$PlatformBin;$env:Path"
 & platform login
 if ($LASTEXITCODE -ne 0) {

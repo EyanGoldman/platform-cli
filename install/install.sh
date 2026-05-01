@@ -30,15 +30,22 @@ set -euo pipefail
 # An explicit env var still overrides — useful for contributors testing
 # against a different environment.
 PLATFORM_PROXY_BASE_URL=${PLATFORM_PROXY_BASE_URL:-__PLATFORM_PROXY_BASE_URL__}
-# Build the placeholder sentinel by concatenation so the install route's
-# `replaceAll(__PLATFORM_PROXY_BASE_URL__, …)` doesn't substitute it
-# here too. Without this the templated copy of the script would compare
-# the templated default against itself and always exit 1.
-__PLACEHOLDER='__PLATFORM_'"PROXY_BASE_URL"'__'
-if [ "${PLATFORM_PROXY_BASE_URL}" = "${__PLACEHOLDER}" ]; then
-  echo "Error: this install.sh appears to be the raw repo copy (no templated host)." >&2
+APP_STORE_URL=${APP_STORE_URL:-__APP_STORE_URL__}
+API_GATEWAY_URL=${API_GATEWAY_URL:-__API_GATEWAY_URL__}
+# Build the placeholder sentinels by concatenation so the install route's
+# `replaceAll(__PLATFORM_PROXY_BASE_URL__, …)` (and siblings) don't
+# substitute them here too. Without this the templated copy of the
+# script would compare the templated default against itself and always
+# exit 1.
+__PROXY_PLACEHOLDER='__PLATFORM_'"PROXY_BASE_URL"'__'
+__APP_STORE_PLACEHOLDER='__APP_'"STORE_URL"'__'
+__API_GATEWAY_PLACEHOLDER='__API_'"GATEWAY_URL"'__'
+if [ "${PLATFORM_PROXY_BASE_URL}" = "${__PROXY_PLACEHOLDER}" ] \
+  || [ "${APP_STORE_URL}" = "${__APP_STORE_PLACEHOLDER}" ] \
+  || [ "${API_GATEWAY_URL}" = "${__API_GATEWAY_PLACEHOLDER}" ]; then
+  echo "Error: this install.sh appears to be the raw repo copy (no templated hosts)." >&2
   echo "Either run it from a deployed platform host (curl https://<host>/install.sh)," >&2
-  echo "or set PLATFORM_PROXY_BASE_URL before running." >&2
+  echo "or set PLATFORM_PROXY_BASE_URL, APP_STORE_URL, and API_GATEWAY_URL before running." >&2
   exit 1
 fi
 PLATFORM_HOME="${HOME}/.platform"
@@ -205,6 +212,8 @@ EOF
 say ""
 say "Almost done — sign in via your browser to mint a token."
 export PLATFORM_PROXY_BASE_URL
+export APP_STORE_URL
+export API_GATEWAY_URL
 export PATH="${PLATFORM_BIN}:${PATH}"
 "${PLATFORM_BIN}/platform" login || err "platform login failed; re-run when you're ready."
 
