@@ -89,6 +89,7 @@ Say "Installing the platform CLI…"
 # for every consumer platform, so it ships from one public release.
 $ReleaseBase = if ($env:PLATFORM_CLI_RELEASE_BASE) { $env:PLATFORM_CLI_RELEASE_BASE } else { "https://github.com/EyanGoldman/platform-cli/releases/latest/download" }
 $tarballUrl = "$ReleaseBase/platform-cli-latest.tgz"
+$credHelperUrl = "$ReleaseBase/platform-cred-helper.tgz"
 $tmp = New-Item -ItemType Directory -Force -Path (Join-Path $env:TEMP ("platform-cli-" + (Get-Random)))
 try {
   $tarPath = Join-Path $tmp "platform-cli.tgz"
@@ -104,17 +105,26 @@ try {
 @echo off
 node "%USERPROFILE%\.platform\cli\dist\index.js" %*
 "@ | Set-Content -Path (Join-Path $PlatformBin "platform.cmd")
-    @"
-@echo off
-node "%USERPROFILE%\.platform\cli\platform-cred-helper.mjs" %*
-"@ | Set-Content -Path (Join-Path $PlatformBin "platform-cred-helper.cmd")
     Ok "Platform CLI installed"
   } else {
     Warn "Tarball missing 'package' directory"
   }
+
+  # Cred-helper ships as its own tarball.
+  $helperTarPath = Join-Path $tmp "platform-cred-helper.tgz"
+  Invoke-WebRequest -Uri $credHelperUrl -OutFile $helperTarPath -UseBasicParsing
+  $helperDir = Join-Path $PlatformHome "cred-helper"
+  if (Test-Path $helperDir) { Remove-Item $helperDir -Recurse -Force }
+  New-Item -ItemType Directory -Path $helperDir -Force | Out-Null
+  tar -xzf $helperTarPath -C $helperDir
+  @"
+@echo off
+node "%USERPROFILE%\.platform\cred-helper\platform-cred-helper.mjs" %*
+"@ | Set-Content -Path (Join-Path $PlatformBin "platform-cred-helper.cmd")
+  Ok "Credential helper installed"
 } catch {
   Warn "Could not download $tarballUrl (release tarball not yet published)."
-  Warn "Dev-mode fallback: clone enterprise-apps and run \"pnpm --filter @enterprise/platform-cli build\" then \"pnpm --filter @enterprise/platform-cli link\""
+  Warn "Dev-mode fallback: clone github.com/EyanGoldman/platform-cli and build locally."
 } finally {
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
