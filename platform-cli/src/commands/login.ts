@@ -90,7 +90,18 @@ export async function runLogin(args: string[], options: LoginOptions = {}): Prom
   keychain.setSecret(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT_EXPIRES, issued.expiresAt);
 
   // 6. ~/.platform/env + shell rc.
-  const envPath = writePlatformEnv(issued.plaintext);
+  // Persist the host URLs alongside the token so subsequent shells (and
+  // agents acting in them) don't have to discover them from .npmrc or
+  // out-of-band config. The CLI itself reads from process.env first,
+  // then ~/.platform/cred-helper.json, but tools like pnpm reading the
+  // scaffold's .npmrc still need PLATFORM_NPM_TOKEN, and agents asking
+  // "what's my proxy URL?" can now `cat ~/.platform/env`.
+  const envPath = writePlatformEnv({
+    token: issued.plaintext,
+    proxyBaseUrl: config.proxyBaseUrl,
+    appStoreUrl: config.appStoreUrl,
+    apiGatewayUrl: config.apiGatewayUrl,
+  });
   const editedRcs = ensureShellRcSourcesEnv();
   log(`✓ Wrote ${envPath}`);
   if (editedRcs.length > 0) {

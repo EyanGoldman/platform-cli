@@ -48,7 +48,12 @@ export async function runRefresh(args: string[]): Promise<number> {
   const keychain = getKeychain();
   keychain.setSecret(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT_TOKEN, issued.plaintext);
   keychain.setSecret(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT_EXPIRES, issued.expiresAt);
-  writePlatformEnv(issued.plaintext);
+  writePlatformEnv({
+    token: issued.plaintext,
+    proxyBaseUrl: config.proxyBaseUrl,
+    appStoreUrl: config.appStoreUrl,
+    apiGatewayUrl: config.apiGatewayUrl,
+  });
 
   log(`✓ Token refreshed (expires ${issued.expiresAt}). Open a new terminal to pick up the new \`PLATFORM_NPM_TOKEN\`.`);
   return 0;
