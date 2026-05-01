@@ -119,7 +119,12 @@ fi
 
 # 5. Platform CLI -----------------------------------------------------
 say "Installing the platform CLI…"
-TARBALL_URL="${PLATFORM_PROXY_BASE_URL}/install/platform-cli-latest.tgz"
+# Pull the CLI tarball from the public release. PLATFORM_PROXY_BASE_URL
+# above is the per-platform proxy host (used for git/npm + login below)
+# — different concern from where the binary lives. The binary is the
+# same artifact for every consumer platform, so it ships from a single
+# public release.
+TARBALL_URL="${PLATFORM_CLI_RELEASE_BASE:-https://github.com/EyanGoldman/platform-cli/releases/latest/download}/platform-cli-latest.tgz"
 TMP=$(mktemp -d)
 cleanup() { rm -rf "${TMP}"; }
 trap cleanup EXIT

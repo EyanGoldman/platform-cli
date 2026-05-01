@@ -83,7 +83,12 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
 
 # 5. Platform CLI ----------------------------------------------------
 Say "Installing the platform CLI…"
-$tarballUrl = "$ProxyBaseUrl/install/platform-cli-latest.tgz"
+# Pull the CLI tarball from the public release. ProxyBaseUrl above is
+# the per-platform proxy host (used for git/npm + login) — separate
+# concern from where the binary lives. The binary is the same artifact
+# for every consumer platform, so it ships from one public release.
+$ReleaseBase = if ($env:PLATFORM_CLI_RELEASE_BASE) { $env:PLATFORM_CLI_RELEASE_BASE } else { "https://github.com/EyanGoldman/platform-cli/releases/latest/download" }
+$tarballUrl = "$ReleaseBase/platform-cli-latest.tgz"
 $tmp = New-Item -ItemType Directory -Force -Path (Join-Path $env:TEMP ("platform-cli-" + (Get-Random)))
 try {
   $tarPath = Join-Path $tmp "platform-cli.tgz"
