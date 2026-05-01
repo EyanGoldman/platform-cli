@@ -15,6 +15,8 @@
  * actionable next step. No stack traces unless `--debug`.
  */
 
+import { fileURLToPath } from "node:url";
+import { realpathSync } from "node:fs";
 import { runLogin } from "./commands/login.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runRefresh } from "./commands/refresh.js";
@@ -76,9 +78,28 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 }
 
-// Run when invoked as a CLI; do nothing when imported by tests.
-const isDirectInvocation =
-  typeof process !== "undefined" && process.argv[1] && /platform-cli\/(dist|src)\/index\./.test(process.argv[1]);
-if (isDirectInvocation) {
+// Run when invoked as a CLI; do nothing when imported by tests. We
+// don't constrain by package-dir name because the install script
+// renames the unpacked tarball directory, which broke an earlier
+// regex that matched literal `platform-cli/`. Match by file shape
+// (`<dir>/index.[mc]?[jt]s`) and resolve symlinks for `bin/platform`.
+function isDirectInvocation(): boolean {
+  if (typeof process === "undefined" || !process.argv[1]) return false;
+  const argv1 = process.argv[1];
+  // Bare `node <anything>/dist/index.js` or `node <anything>/src/index.ts`.
+  if (/(?:^|[\\/])(?:dist|src)[\\/]index\.[cm]?[jt]s$/.test(argv1)) {
+    return true;
+  }
+  // Compare argv[1] (possibly a symlink, e.g. `bin/platform`) against
+  // this module's resolved path. realpath both sides; if equal, this
+  // is the entry point.
+  try {
+    const meta = fileURLToPath(import.meta.url);
+    return realpathSync(argv1) === realpathSync(meta);
+  } catch {
+    return false;
+  }
+}
+if (isDirectInvocation()) {
   void main().then((code) => process.exit(code));
 }

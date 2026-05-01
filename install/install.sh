@@ -129,6 +129,8 @@ TMP=$(mktemp -d)
 cleanup() { rm -rf "${TMP}"; }
 trap cleanup EXIT
 
+CRED_HELPER_URL="${PLATFORM_CLI_RELEASE_BASE:-https://github.com/EyanGoldman/platform-cli/releases/latest/download}/platform-cred-helper.tgz"
+
 if curl -fsSL --output "${TMP}/platform-cli.tgz" "${TARBALL_URL}" 2>/dev/null; then
   tar -xzf "${TMP}/platform-cli.tgz" -C "${TMP}"
   # The tarball is expected to contain a `package` directory (npm
@@ -137,10 +139,7 @@ if curl -fsSL --output "${TMP}/platform-cli.tgz" "${TARBALL_URL}" 2>/dev/null; t
     rm -rf "${PLATFORM_HOME}/cli"
     mv "${TMP}/package" "${PLATFORM_HOME}/cli"
     ln -sfn "${PLATFORM_HOME}/cli/dist/index.js" "${PLATFORM_BIN}/platform"
-    ln -sfn "${PLATFORM_HOME}/cli/scripts/platform-cred-helper.mjs" "${PLATFORM_BIN}/platform-cred-helper" \
-      || ln -sfn "${PLATFORM_HOME}/cli/dist/platform-cred-helper.mjs" "${PLATFORM_BIN}/platform-cred-helper" \
-      || warn "Could not link credential helper; install it manually from tools/platform-cred-helper."
-    chmod +x "${PLATFORM_BIN}/platform" "${PLATFORM_BIN}/platform-cred-helper" 2>/dev/null || true
+    chmod +x "${PLATFORM_BIN}/platform" 2>/dev/null || true
     ok "Platform CLI installed at ${PLATFORM_BIN}/platform"
   else
     warn "Tarball missing 'package' directory; falling back to dev-mode install."
@@ -149,6 +148,23 @@ if curl -fsSL --output "${TMP}/platform-cli.tgz" "${TARBALL_URL}" 2>/dev/null; t
 else
   warn "Could not download ${TARBALL_URL} (release tarball not yet published)."
   DEV_MODE=1
+fi
+
+# Cred-helper ships as its own tarball — extract it next to the CLI so
+# git's credential helper can find it. (It used to be bundled inside
+# platform-cli's npm pack, but that conflated two unrelated packages.)
+if [ "${DEV_MODE:-0}" != "1" ]; then
+  if curl -fsSL --output "${TMP}/platform-cred-helper.tgz" "${CRED_HELPER_URL}" 2>/dev/null; then
+    rm -rf "${PLATFORM_HOME}/cred-helper"
+    mkdir -p "${PLATFORM_HOME}/cred-helper"
+    tar -xzf "${TMP}/platform-cred-helper.tgz" -C "${PLATFORM_HOME}/cred-helper"
+    ln -sfn "${PLATFORM_HOME}/cred-helper/platform-cred-helper.mjs" "${PLATFORM_BIN}/platform-cred-helper"
+    chmod +x "${PLATFORM_BIN}/platform-cred-helper" 2>/dev/null || true
+    ok "Credential helper installed at ${PLATFORM_BIN}/platform-cred-helper"
+  else
+    warn "Could not download ${CRED_HELPER_URL} (cred-helper tarball not yet published)."
+    DEV_MODE=1
+  fi
 fi
 
 if [ "${DEV_MODE:-0}" = "1" ]; then
