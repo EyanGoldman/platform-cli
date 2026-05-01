@@ -39,6 +39,24 @@ function Bail ($msg) { Write-Host "✗ $msg" -ForegroundColor Red; exit 1 }
 
 New-Item -ItemType Directory -Force -Path $PlatformBin | Out-Null
 
+# 0. Preflight --------------------------------------------------------
+# Required tools we don't install ourselves: git (cred-helper config),
+# curl/Invoke-WebRequest (download), tar (unpack tarball). Windows
+# ships Invoke-WebRequest with PowerShell and tar with Windows 10+.
+# Git is the one that's commonly missing.
+$missingTools = @()
+foreach ($tool in @("git", "tar")) {
+  if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+    $missingTools += $tool
+  }
+}
+if ($missingTools.Count -gt 0) {
+  Warn "Missing required tools: $($missingTools -join ', ')"
+  Warn "  Install Git for Windows from https://git-scm.com/download/win"
+  Warn "  (or via winget: winget install --id Git.Git)"
+  Bail "Re-run this script once those are installed."
+}
+
 # 1. mise via Scoop ---------------------------------------------------
 if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
   Say "Installing mise…"

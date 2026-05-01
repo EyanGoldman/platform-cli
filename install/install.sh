@@ -67,6 +67,31 @@ esac
 
 mkdir -p "${PLATFORM_BIN}"
 
+# 0. Preflight --------------------------------------------------------
+# Tools we hard-require AND that we don't install ourselves: curl
+# (download), git (cred-helper config + every later git op), tar
+# (unpack the CLI tarball). bash is the runtime; if you're reading
+# this you have it. We check explicitly so the failure is "install
+# git" rather than the cryptic 127 you'd get later from `git config`.
+missing_tools=()
+for tool in curl git tar; do
+  if ! command -v "${tool}" >/dev/null 2>&1; then
+    missing_tools+=("${tool}")
+  fi
+done
+if [ ${#missing_tools[@]} -gt 0 ]; then
+  warn "Missing required tools: ${missing_tools[*]}"
+  if [ "$OS" = "macos" ]; then
+    warn "  On macOS, the easiest fix is to install Xcode Command Line Tools:"
+    warn "    xcode-select --install"
+    warn "  That brings in git, curl, tar, and a few other UNIX tools at once."
+  else
+    warn "  On Debian/Ubuntu: sudo apt-get install -y ${missing_tools[*]}"
+    warn "  On Fedora/RHEL:   sudo dnf install -y ${missing_tools[*]}"
+  fi
+  err "Re-run this script once those are installed."
+fi
+
 # 1. mise -------------------------------------------------------------
 if ! command -v mise >/dev/null 2>&1; then
   say "Installing mise (runtime version manager)…"
